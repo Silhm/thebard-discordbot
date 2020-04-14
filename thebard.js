@@ -2,50 +2,41 @@ const Discord = require('discord.js');
 const Canvas = require('canvas');
 
 const bot = new Discord.Client();
+const config = require('./config/base.json');
+const gameSystem = require(`./config/gameSystem/${config.gameSystem}.json`);
 
 bot.on('ready', function () {
-	console.log("Je suis connecté !");
-/*  bot.user.setAvatar("./assets/bard2.png")
-    .then(() => console.log("avatar OK"))
-    .catch(console.error)
-  */
+	console.log("I'm logged !");
+	if(config.setAvatar) {
+		bot.user.setAvatar("./assets/bard.png")
+				.then(() => console.log("avatar loaded"))
+				.catch(console.error)
+	}
 });
 
-bot.login('Njk4OTI2NDYyNDQ2NjAwMjMy.XpM-DQ.j-DnV5XT7I7nwC7ny6U6VPdf9QE');
+bot.login(config.botToken);
 
+if(config.welcomeUser){
+	bot.on('guildMemberAdd', member => {
+		member.createDM().then(channel => {
+			return channel.send('Bienvenue sur mon serveur ' + member.displayName)
+		}).catch(console.error)
+		// On pourrait catch l'erreur autrement ici (l'utilisateur a peut être désactivé les MP)
+	});
+}
+
+/**
+ * Handle Stream audio
+ */
 bot.on('message', message => {
-  if (message.content === 'ping') {
-    message.reply('pong !')
-  }
-});
-
-/*bot.on('guildMemberAdd', member => {
-  member.createDM().then(channel => {
-    return channel.send('Bienvenue sur mon serveur ' + member.displayName)
-  }).catch(console.error)
-  // On pourrait catch l'erreur autrement ici (l'utilisateur a peut être désactivé les MP)
-})
-*/
-
-
-bot.on('message', message => {
-
-  if (message.content.startsWith('!play')) {
-		// On récupère les arguments de la commande
-		let args = message.content.split(' ');
-		// On rejoint le channel audio
-		const voiceChannel = message.member.voice.channel.join()
+  if (message.content.startsWith('!stream')) {
+		// Join audio channel
+		message.member.voice.channel.join()
 			.then(function (connection) {
-				// From a path
-				//connection.play('audio.mp3');
-				// From a ReadableStream
-				//connection.play(fs.createReadStream('audio.mp3'));
-				// From a URL
-				connection.play('http://10.0.0.42:8000/thebard.ogg');
+				connection.play(config.iceCastUrl);
 				message.channel.send('playing time!')
 			})
 		}
-
 });
 
 // Pass the entire Canvas object because you'll need to access its width, as well its context
@@ -66,22 +57,15 @@ const applyText = (canvas, text) => {
 };
 
 
-
-
+/**
+ * Roll for initiative with command  /r initiative or /r i
+ */
 bot.on('message', async message => {
-  if (message.content === '/r initiative') {
-
+  if (message.content === '/r initiative' || message.content === '/r i') {
 		const channel = message.channel;
 		if (!channel) return;
-
 		const canvas = Canvas.createCanvas(500, 110);
 		const ctx = canvas.getContext('2d');
-
-		//const background = await Canvas.loadImage('./bg-parchemin.jpg');
-		//ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
-
-		//ctx.strokeStyle = '#74037b';
-		//ctx.strokeRect(0, 0, canvas.width, canvas.height);
 
 		// Slightly smaller text placed above the member's display name
 		ctx.font = '28px sans-serif';
@@ -94,16 +78,18 @@ bot.on('message', async message => {
 
 		let initiative = Math.floor(20*Math.random())+1;
 
-		const avatar = await Canvas.loadImage('./dice/d20.png');
+		const avatar = await Canvas.loadImage('./assets/dice/d20.png');
 		ctx.drawImage(avatar, 5, 5, 100, 100);
-				ctx.font = '19px sans-serif';
-				ctx.textAlign = "center"
+		ctx.font = '19px sans-serif';
+		ctx.textAlign = "center";
 		ctx.fillText(`${initiative}`, 56, canvas.height / 1.75);
 
 		const attachment = new Discord.MessageAttachment(canvas.toBuffer(), './assets/bard.png');
 		channel.send(`Initiative pour ${message.member}: ${initiative}`, attachment);
 		console.log(`${message.member.displayName} has rolled for initiative: ${initiative}`);
 	}
+
+  // Match a /r <atk> <def>
 	else if(message.content.match(/\/r \d \d/g)){
 		const channel = message.channel;
 		if (!channel) return;
@@ -114,13 +100,114 @@ bot.on('message', async message => {
 		let atkNumber = parseInt(match[1], 10);
 		let defNumber = parseInt(match[2], 10);
 
-		let atkArray = Array.from({ length: atkNumber }, (_, i) => Math.floor(6*Math.random())+1);
-		let defArray = Array.from({ length: defNumber }, (_, i) => Math.floor(6*Math.random())+1);
-
-		channel.send(`Jet pour ${message.member}: ${atkArray} / ${defArray}`);
+		let atkArray = Array.from({ length: atkNumber }, (_, i) => Math.floor(6*Math.random())+1).sort((a, b) => a - b);
+		let defArray = Array.from({ length: defNumber }, (_, i) => Math.floor(6*Math.random())+1).sort((a, b) => a - b);
 
 
+		const canvas = Canvas.createCanvas(650, 110);
+		const ctx = canvas.getContext('2d');
+		// Slightly smaller text placed above the member's display name
+		ctx.font = '28px sans-serif';
+		ctx.fillStyle = '#ffffff';
+
+		const atkImg = await Canvas.loadImage('./assets/atk.png');
+		const defImg = await Canvas.loadImage('./assets/def.png');
+		const divider = await Canvas.loadImage('./assets/divider.png');
+
+		const diceSuccess = await Canvas.loadImage('./assets/dice/d6-success.png');
+		const diceFail = await Canvas.loadImage('./assets/dice/d6-fail.png');
+
+		let xOffset = 5;
+		let successCount = {atk:0,def:0};
+
+		let resultOffset = xOffset+14;
+		ctx.drawImage(atkImg, xOffset, 5, 50, 50);
+		ctx.font = '20px sans-serif';
+
+
+		atkArray.forEach(atkRes => {
+			xOffset+=60;
+			if( atkRes <= gameSystem.successThreshold){
+				ctx.drawImage(diceSuccess, xOffset, 5, 50, 50);
+				successCount.atk++;
+			}
+			else{
+				ctx.drawImage(diceFail, xOffset, 5, 50, 50);
+			}
+			ctx.fillText(`${atkRes}`, xOffset+13, 38);
+		});
+
+		xOffset+=60;
+		ctx.drawImage(divider, xOffset+25, 5, 3, 50);
+
+		defArray.forEach(defRes => {
+			xOffset+=60;
+			if( defRes <= gameSystem.successThreshold ){
+				ctx.drawImage(diceSuccess, xOffset, 5, 50, 50);
+				successCount.def++;
+			}
+			else{
+				ctx.drawImage(diceFail, xOffset, 5, 50, 50);
+			}
+			ctx.fillText(`${defRes}`, xOffset+13, 38);
+		});
+
+		xOffset+=60;
+		ctx.drawImage(defImg, xOffset, 5, 50, 50);
+		ctx.font = '28px sans-serif';
+		ctx.fillText(`${successCount.atk}`, resultOffset, 80);
+		ctx.fillText(`${successCount.def}`, xOffset+14, 80);
+
+		const attachment = new Discord.MessageAttachment(canvas.toBuffer(), './assets/bard.png');
+
+		console.log(`Jet pour ${message.member.displayName}: ${atkArray} / ${defArray} || ATK: ${successCount.atk}  DEF: ${successCount.def}`);
+		channel.send(`Jet pour ${message.member}:`, attachment);
 	}
 
+	// Match a /r quick
+	else if(message.content === "/r quick"){
+		const channel = message.channel;
+		if (!channel) return;
+
+		const canvas = Canvas.createCanvas(650, 110);
+		const ctx = canvas.getContext('2d');
+		// Slightly smaller text placed above the member's display name
+		ctx.font = '28px sans-serif';
+		ctx.fillStyle = '#ffffff';
+
+		const quickImg = await Canvas.loadImage('./assets/quick.png');
+		const diceSuccess = await Canvas.loadImage('./assets/dice/d6-success.png');
+		const diceFail = await Canvas.loadImage('./assets/dice/d6-fail.png');
+
+		let xOffset = 5;
+		let successCount = 0;
+
+		ctx.drawImage(quickImg, xOffset, 5, 50, 50);
+
+		let resultOffset = xOffset+14;
+		ctx.font = '20px sans-serif';
+
+		let atkArray = Array.from({ length: 6 }, (_, i) => Math.floor(6*Math.random())+1).sort((a, b) => a - b);
+
+		atkArray.forEach(atkRes => {
+			xOffset+=60;
+			if(atkRes<=gameSystem.successThreshold){
+				ctx.drawImage(diceSuccess, xOffset, 5, 50, 50);
+				successCount++;
+			}
+			else{
+				ctx.drawImage(diceFail, xOffset, 5, 50, 50);
+			}
+			ctx.fillText(`${atkRes}`, xOffset+13, 38);
+		});
+
+		ctx.font = '28px sans-serif';
+		ctx.fillText(`${successCount}`, resultOffset, 80);
+
+		const attachment = new Discord.MessageAttachment(canvas.toBuffer(), './assets/bard.png');
+
+		console.log(`Réussite éclair pour ${message.member.displayName}: ${atkArray}  || SUCCESS: ${successCount}`);
+		channel.send(`Réussite éclair pour ${message.member}:`, attachment);
+	}
 
 });

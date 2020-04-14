@@ -1,0 +1,6 @@
+{
+  "name": "Wushu",
+  "link": "http://danielbayn.com/wushu/",
+  "successThreshold": 4,
+  "commandPrefix": "/r"
+}
