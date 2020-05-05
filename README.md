@@ -12,7 +12,7 @@ List of available commands: wushu
 
 - `/r quick` to roll a quick success test
 
-- `!stream` to invite the bot in your current vocal channel, and start streaming from `config.iceCastUrl` in your config/base.json
+- `!sing` to invite the bot in your current vocal channel, and start streaming from `config.iceCastUrl` in your config/base.json
  
  
 ## Installation
