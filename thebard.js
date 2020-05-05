@@ -5,8 +5,12 @@ const bot = new Discord.Client();
 const config = require('./config/base.json');
 const gameSystem = require(`./config/gameSystem/${config.gameSystem}.json`);
 
+const inviteUrl = `https://discordapp.com/oauth2/authorize?client_id=${config.clientId}&scope=bot&permissions=3148800`
+
 bot.on('ready', function () {
-	console.log("I'm logged !");
+	console.log("The Bard entered the Inn and is ready to sing!");
+	console.log("Invite him to your table:", inviteUrl);
+	console.log("Ask him for a song with: !sing");
 	if(config.setAvatar) {
 		bot.user.setAvatar("./assets/bard.png")
 				.then(() => console.log("avatar loaded"))
@@ -29,7 +33,7 @@ if(config.welcomeUser){
  * Handle Stream audio
  */
 bot.on('message', message => {
-  if (message.content.startsWith('!stream')) {
+  if (message.content.startsWith('!sing')) {
 		// Join audio channel
 		message.member.voice.channel.join()
 			.then(function (connection) {

@@ -1,7 +1,8 @@
 {
   "gameSystem": "wushu",
   "setAvatar": false,
-  "botToken": "put-bot-token-here",
+  "botToken": "<put-bot-token-here>",
+  "clientId": "<put-app-CLIENT-ID-here>",
   "welcomeUser": false,
   "iceCastUrl": "http://<your-icecast-url>/thebard.ogg"
 
