@@ -35,7 +35,7 @@ if(config.welcomeUser){
 bot.on('message', message => {
   if (message.content.startsWith('!sing')) {
 		// Join audio channel
-		message.member.voice.channel.join()
+		message.guild.channels.cache.filter(function (channel) { return channel.type === 'voice' }).first().join()
 			.then(function (connection) {
 				connection.play(config.iceCastUrl);
 				message.channel.send('playing time!')
