@@ -35,12 +35,18 @@ if(config.welcomeUser){
 bot.on('message', message => {
   if (message.content.startsWith('!sing')) {
 		// Join audio channel
-		message.guild.channels.cache.filter(function (channel) { return channel.type === 'voice' }).first().join()
-			.then(function (connection) {
+	  	let chan = null;
+	 	if(message.member.voice.channel){
+			chan = message.member.voice.channel;
+		}
+	        else{
+		  chan = message.guild.channels.cache.filter(function (channel) { return channel.type === 'voice' }).first();
+		}
+	  	chan.join().then(function (connection) {
 				connection.play(config.iceCastUrl);
 				message.channel.send('playing time!')
-			})
-		}
+		});
+	}
 });
 
 // Pass the entire Canvas object because you'll need to access its width, as well its context
